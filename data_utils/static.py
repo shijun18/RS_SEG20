@@ -34,5 +34,5 @@ def csv_maker(input_path,save_path,label_list):
 if __name__ == "__main__":
     lab_path = '../dataset/lab_train'
     csv_path = './annotation.csv'
-    label_list = ['0','1','2','3','4','5','6','255']
+    label_list = ['A','B','C','D','E','F','G','H']
     csv_maker(lab_path,csv_path,label_list)

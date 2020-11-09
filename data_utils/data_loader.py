@@ -22,22 +22,22 @@ class To_Tensor(object):
   def __call__(self,sample):
 
     image = np.array(sample['image'],dtype=np.float32) / 255
-    label = np.array(sample['label'],dtype=np.float32)
+    mask = np.array(sample['mask'],dtype=np.float32)
     
     # expand dims
     if len(image.shape) == 2:
         new_image = np.expand_dims(image,axis=0)
     else:
         new_image = image.transpose((2,0,1))
-    new_label = np.empty((self.num_class,) + label.shape, dtype=np.float32)
-    for z in range(1, self.num_class):
-        temp = (label==z-1).astype(np.float32)
-        new_label[z,...] = temp
-    new_label[0,...] = np.amax(new_label[1:,...],axis=0) == 0   
-   
+    new_mask = np.empty((self.num_class,) + mask.shape, dtype=np.float32)
+    for z in range(self.num_class-1):
+        temp = (mask==z).astype(np.float32)
+        new_mask[z,...] = temp
+    new_mask[self.num_class-1,...] = np.amax(new_mask[:self.num_class-1,...],axis=0) == 0   
     # convert to Tensor
     new_sample = {'image': torch.from_numpy(new_image),
-                  'label': torch.from_numpy(new_label)}
+                  'mask': torch.from_numpy(new_mask),
+                  'label': torch.Tensor(sample['label'])}
     
     return new_sample
 
@@ -68,15 +68,20 @@ class DataGenerator(Dataset):
 
 
   def __getitem__(self,index):
-    # Get image and label
+    # Get image and mask
     image = Image.open(self.img_list[index])
-    label = Image.open(self.lab_list[index])
+    mask = Image.open(self.lab_list[index])
     assert os.path.splitext(os.path.basename(self.img_list[index]))[0] == os.path.splitext(os.path.basename(self.lab_list[index]))[0]
     if self.roi_number is not None:
         assert self.num_class == 2
-        label = Image.fromarray((np.array(label)!=self.roi_number).astype(np.uint8)) 
-
-    sample = {'image':image, 'label':label}
+        mask = Image.fromarray((np.array(mask)!=self.roi_number).astype(np.uint8)) 
+    
+    label = np.zeros((self.num_class,),dtype=np.uint8)
+    label_array = np.array(mask)
+    label_array[label_array == 255] = 7
+    label[np.unique(label_array).astype(np.uint8)] = 1
+    
+    sample = {'image':image, 'mask':mask, 'label':list(label)}
     # Transform
     if self.transform is not None:
       sample = self.transform(sample)
