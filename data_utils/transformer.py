@@ -65,4 +65,5 @@ class RandomRotate2D(object):
         image = image.rotate(rotate_degree, Image.BILINEAR)
         mask = mask.rotate(rotate_degree, Image.NEAREST)
 
-        return {'image': image, 'mask': mask, 'label': sample['label']}
+        new_sample = {'image': image, 'mask': mask, 'label': sample['label']}
+        return new_sample
