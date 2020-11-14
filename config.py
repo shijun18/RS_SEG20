@@ -19,10 +19,10 @@ VERSION = 'v1.0'
 
 # for the all and single plan, mode can be one of ['cls','seg','mtl'], 
 # but when plan == seg_single, the mode must be 'seg'
-MODE = 'cls'
+MODE = 'mtl'
 
 
-DEVICE = '4'
+DEVICE = '0'
 # Must be True when pre-training and inference
 PRE_TRAINED = False 
 # 1,2,...,8
@@ -90,12 +90,18 @@ __cls_loss__ = ['BCEWithLogitsLoss']
 __mtl_loss__ = ['BCEPlusDice']
 # Arguments when perform the trainer 
 
+if MODE == 'cls':
+    LOSS_FUN = 'BCEWithLogitsLoss'
+elif MODE == 'seg' :
+    LOSS_FUN = 'DiceLoss'
+else:
+    LOSS_FUN = 'BCEPlusDice'
 
 SETUP_TRAINER = {
   'output_dir':'./ckpt/{}/{}/{}/{}'.format(PLAN,MODE,VERSION,ROI_NAME),
   'log_dir':'./log/{}/{}/{}/{}'.format(PLAN,MODE,VERSION,ROI_NAME), 
   'optimizer':'Adam',
-  'loss_fun':'BCEWithLogitsLoss',
+  'loss_fun':LOSS_FUN,
   'class_weight':None,
   'lr_scheduler': 'CosineAnnealingLR', #'CosineAnnealingLR'
   }

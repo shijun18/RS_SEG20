@@ -278,8 +278,10 @@ class SemanticSeg(object):
             if self.mode == 'cls':
                 print('epoch:{},step:{},train_loss:{:.5f},train_acc:{:.5f},lr:{}'.format(epoch, step, loss.item(), acc.item(), optimizer.param_groups[0]['lr']))
 
-            else:
+            elif self.mode == 'seg':
                 print('epoch:{},step:{},train_loss:{:.5f},train_dice:{:.5f},lr:{}'.format(epoch, step, loss.item(), dice.item(), optimizer.param_groups[0]['lr']))
+            else:
+                print('epoch:{},step:{},train_loss:{:.5f},train_dice:{:.5f},train_acc:{:.5f},lr:{}'.format(epoch, step, loss.item(), dice.item(),acc.item(), optimizer.param_groups[0]['lr']))
 
             if self.global_step % 10 == 0:
                 self.writer.add_scalars('data/train_loss_dice', {
@@ -350,8 +352,10 @@ class SemanticSeg(object):
 
                 if self.mode == 'cls':
                     print('epoch:{},step:{},val_loss:{:.5f},val_acc:{:.5f}'.format(epoch, step, loss.item(), acc.item()))
-                else:
+                elif self.mode == 'seg':
                     print('epoch:{},step:{},val_loss:{:.5f},val_dice:{:.5f}'.format(epoch, step, loss.item(), dice.item()))
+                else:
+                    print('epoch:{},step:{},val_loss:{:.5f},val_dice:{:.5f},val_acc:{:.5f}'.format(epoch, step, loss.item(), dice.item(), acc.item()))
 
         return val_loss.avg, val_dice.avg, val_acc.avg
 
