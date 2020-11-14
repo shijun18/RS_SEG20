@@ -32,7 +32,7 @@ def csv_maker(input_path,save_path,label_list):
 
 
 if __name__ == "__main__":
-    lab_path = '../dataset/lab_train'
+    lab_path = '/staff/shijun/torch_projects/RSI_SEG20/dataset/lab_train'
     csv_path = './annotation.csv'
     label_list = ['A','B','C','D','E','F','G','H']
     csv_maker(lab_path,csv_path,label_list)

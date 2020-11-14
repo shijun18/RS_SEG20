@@ -2,6 +2,19 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.vscode/
+
+.ipynb_checkpoints/
+dataset/
+log/
+ckpt/
+.vscode/
+__pycache__/
+mid_feature/
+*.ipynb
+*.csv
+*.json
+
 
 # C extensions
 *.so

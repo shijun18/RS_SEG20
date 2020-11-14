@@ -74,6 +74,8 @@ class DataGenerator(Dataset):
         # Get image and mask
         image = Image.open(self.img_list[index])
         mask = Image.open(self.lab_list[index])
+        # print(self.img_list[index])
+        # print(self.lab_list[index])
         assert os.path.splitext(os.path.basename(self.img_list[index]))[0] == os.path.splitext(os.path.basename(self.lab_list[index]))[0]
         if self.roi_number is not None:
             assert self.num_class == 2
