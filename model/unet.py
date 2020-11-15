@@ -79,7 +79,7 @@ class Tail2D(nn.Module):
 #-------------------------------------------
 
 class UNet(nn.Module):
-    def __init__(self, stem, down, up, tail, width, conv_builder, n_channels=1, n_classes=2, bilinear=True, dropout_flag=True, cls_location='middle'):
+    def __init__(self, stem, down, up, tail, width, conv_builder, n_channels=1, n_classes=2, bilinear=True, dropout_flag=True, cls_location='middle', revise=False):
         super(UNet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
@@ -87,6 +87,7 @@ class UNet(nn.Module):
         self.width = width
         self.dropout_flag = dropout_flag
         self.cls_location = cls_location
+        self.revise = revise
         factor = 2 if bilinear else 1
 
         self.inc = stem(n_channels, width[0])
@@ -138,6 +139,13 @@ class UNet(nn.Module):
         if self.dropout_flag:
             x = self.dropout(x)
         seg_logits = self.outc(x)
+        
+        if self.revise:
+            b, c, _, _ = seg_logits.size()
+            weight = torch.sigmoid(cls_logits)
+            weight = (weight > 0.5).float()
+            seg_logits = seg_logits * weight.view(b,c,1,1).expand_as(seg_logits)
+
         return [cls_logits,seg_logits]
 
 
@@ -154,12 +162,12 @@ def unet(**kwargs):
 
 if __name__ == "__main__":
   
-  net = unet(n_channels=3, n_classes=2, bilinear=True)
+  net = unet(n_channels=3, n_classes=2, bilinear=True, revise=True)
 
 
   from torchsummary import summary
   import os 
-  os.environ['CUDA_VISIBLE_DEVICES'] = '5'
+  os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 #   summary(net,input_size=(1,512,512),batch_size=1,device='cuda')
   summary(net.cuda(),input_size=(3,256,256),batch_size=1,device='cuda')
   import sys

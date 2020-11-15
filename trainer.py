@@ -122,6 +122,10 @@ class SemanticSeg(object):
             if os.path.exists(output_dir):
                 shutil.rmtree(output_dir)
             os.makedirs(output_dir)
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
         self.writer = SummaryWriter(log_dir)
         self.global_step = self.start_epoch * math.ceil(
@@ -409,7 +413,9 @@ class SemanticSeg(object):
         if net_name == 'c_unet':
             from model.unet import unet
             net = unet(n_channels=self.channels, n_classes=self.num_classes)
-
+        elif net_name == 'r_unet':
+            from model.unet import unet
+            net = unet(n_channels=self.channels, n_classes=self.num_classes, revise=True)
         return net
 
     def _get_loss(self, loss_fun, class_weight=None):
@@ -423,6 +429,10 @@ class SemanticSeg(object):
         elif loss_fun == 'DiceLoss':
             from loss.dice_loss import DiceLoss
             loss = DiceLoss(weight=class_weight, ignore_index=self.num_classes-1, p=1)
+        
+        elif loss_fun == 'mIoU_loss':
+            from loss.mIoU_loss import mIoU_loss
+            loss = mIoU_loss(weight=class_weight, ignore_index=self.num_classes-1, p=1)
 
         elif loss_fun == 'PowDiceLoss':
             from loss.dice_loss import DiceLoss
@@ -491,14 +501,39 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-def binary_dice(predict, target, smooth=1e-5):
-    """Dice loss of binary class
+
+def binary_iou(predict, target, smooth=1e-5):
+    """IoU of binary class
     Args:
         smooth: A float number to smooth loss, and avoid NaN error, default: 1e-5
         predict: A tensor of shape [N, *]
         target: A tensor of shape same with predict
     Returns:
-        Loss tensor according to arg reduction
+        IoU tensor according to arg reduction
+    Raise:
+        Exception if unexpected reduction
+    """
+    assert predict.shape[0] == target.shape[0], "predict & target batch size don't match"
+    predict = predict.contiguous().view(predict.shape[0], -1)
+    target = target.contiguous().view(target.shape[0], -1)
+
+    inter = torch.sum(torch.mul(predict, target), dim=1)
+    union = torch.sum(predict + target, dim=1)
+
+    iou = (inter + smooth) / (union - inter + smooth)
+
+    return iou.mean()
+
+
+
+def binary_dice(predict, target, smooth=1e-5):
+    """Dice of binary class
+    Args:
+        smooth: A float number to smooth loss, and avoid NaN error, default: 1e-5
+        predict: A tensor of shape [N, *]
+        target: A tensor of shape same with predict
+    Returns:
+        dice according to arg reduction
     Raise:
         Exception if unexpected reduction
     """
@@ -536,6 +571,30 @@ def compute_dice(predict, target, ignore_index=0):
         return total_dice / (target.shape[1] - 1)
     else:
         return total_dice / target.shape[1]
+
+
+def compute_iou(predict, target, ignore_index=0):
+    """
+    Compute iou
+    Args:
+        predict: A tensor of shape [N, C, *]
+        target: A tensor of same shape with predict
+        ignore_index: class index to ignore
+    Return:
+        mean iou over the batch
+    """
+    assert predict.shape == target.shape, 'predict & target shape do not match'
+    total_iou = 0.
+    predict = F.softmax(predict, dim=1)
+    for i in range(target.shape[1]):
+        if i != ignore_index:
+            iou = binary_iou(predict[:, i], target[:, i])
+            total_iou += iou
+
+    if ignore_index is not None:
+        return total_iou / (target.shape[1] - 1)
+    else:
+        return total_iou / target.shape[1]
 
 
 def accuracy(output, target):

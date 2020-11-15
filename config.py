@@ -5,7 +5,7 @@ from utils import get_path_with_annotation
 from utils import get_weight_path
 
 
-__net__ = ['c_unet']
+__net__ = ['c_unet','r_unet']
 __plan__ = ['all','single','seg_single']
 __mode__ = ['cls','seg','mtl']
 
@@ -15,16 +15,16 @@ ROI_LIST = ['A','B','C','D','E','F','G']
 
 PLAN = 'all'
 NET_NAME = 'c_unet'
-VERSION = 'v1.0'
+VERSION = 'v1.1'
 
 # for the all and single plan, mode can be one of ['cls','seg','mtl'], 
 # but when plan == seg_single, the mode must be 'seg'
-MODE = 'mtl'
+MODE = 'seg'
 
 
-DEVICE = '0'
+DEVICE = '3,4'
 # Must be True when pre-training and inference
-PRE_TRAINED = False 
+PRE_TRAINED = True 
 # 1,2,...,8
 CURRENT_FOLD = 1
 GPU_NUM = len(DEVICE.split(','))
@@ -57,16 +57,17 @@ else:
 
 #--------------------------------- others
 INPUT_SHAPE = (256,256)
-BATCH_SIZE = 16
+BATCH_SIZE = 32
 
 
-CKPT_PATH = './ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,MODE,VERSION,ROI_NAME,str(CURRENT_FOLD))
+CKPT_PATH = './ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,'cls','v1.0',ROI_NAME,str(CURRENT_FOLD))
 WEIGHT_PATH = get_weight_path(CKPT_PATH)
+print(WEIGHT_PATH)
 
 INIT_TRAINER = {
   'net_name':NET_NAME,
   'lr':1e-3, 
-  'n_epoch':50,
+  'n_epoch':100,
   'channels':3,
   'num_classes':NUM_CLASSES, 
   'roi_number':ROI_NUMBER,
@@ -85,7 +86,7 @@ INIT_TRAINER = {
  }
 #---------------------------------
 
-__seg_loss__ = ['DiceLoss','PowDiceLoss','Cross_Entropy']
+__seg_loss__ = ['DiceLoss','mIoU_loss','PowDiceLoss','Cross_Entropy']
 __cls_loss__ = ['BCEWithLogitsLoss']
 __mtl_loss__ = ['BCEPlusDice']
 # Arguments when perform the trainer 
