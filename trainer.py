@@ -87,8 +87,7 @@ class SemanticSeg(object):
 
         if self.pre_trained:
             self._get_pre_trained(self.weight_path)
-            self.loss_threshold = eval(
-                os.path.splitext(self.weight_path.split(':')[-1])[0])
+            # self.loss_threshold = eval(os.path.splitext(self.weight_path.split(':')[-1])[0])
 
         if self.roi_number is not None:
             assert self.num_classes == 2, "num_classes must be set to 2 for binary segmentation"
@@ -178,12 +177,13 @@ class SemanticSeg(object):
 
         # loss_threshold = 1.0
         for epoch in range(self.start_epoch, self.n_epoch):
-            train_loss, train_dice, train_acc = self._train_on_epoch(
-                epoch, net, loss, optimizer, train_loader)
+            train_loss, train_dice, train_acc = self._train_on_epoch(epoch, net, loss, optimizer, train_loader)
 
             torch.cuda.empty_cache()
 
             val_loss, val_dice, val_acc = self._val_on_epoch(epoch, net, loss, val_path, train_transformer)
+
+            torch.cuda.empty_cache()
 
             if lr_scheduler is not None:
                 lr_scheduler.step(val_loss)
@@ -206,7 +206,7 @@ class SemanticSeg(object):
             }, epoch)
             self.writer.add_scalar('data/lr', optimizer.param_groups[0]['lr'],epoch)
 
-            if val_loss < self.loss_threshold:
+            if val_loss <= self.loss_threshold:
                 self.loss_threshold = val_loss
 
                 if len(self.device.split(',')) > 1:
@@ -273,7 +273,8 @@ class SemanticSeg(object):
             train_acc.update(acc.item(), data.size(0))
 
             # measure dice and record loss
-            dice = compute_dice(seg_output.data, target)
+            dice = compute_dice(seg_output.data, target,ignore_index=self.num_classes-1)
+            # dice = compute_iou(seg_output.data, target)
             train_loss.update(loss.item(), data.size(0))
             train_dice.update(dice.item(), data.size(0))
 
@@ -348,7 +349,8 @@ class SemanticSeg(object):
                 val_acc.update(acc.item(),data.size(0))
 
                 # measure dice and record loss
-                dice = compute_dice(seg_output.data, target)
+                dice = compute_dice(seg_output.data, target, ignore_index=self.num_classes-1)
+                # dice = compute_iou(seg_output.data, target)
                 val_loss.update(loss.item(), data.size(0))
                 val_dice.update(dice.item(), data.size(0))
 
@@ -407,7 +409,6 @@ class SemanticSeg(object):
                 # save
                 seg_output.save(os.path.join(save_path,item.name.split('.')[0] + '.png'))
                 torch.cuda.empty_cache()
-
 
     def _get_net(self, net_name):
         if net_name == 'c_unet':

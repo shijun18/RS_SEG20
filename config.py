@@ -14,15 +14,15 @@ ROI_LIST = ['A','B','C','D','E','F','G']
     
 
 PLAN = 'all'
-NET_NAME = 'c_unet'
-VERSION = 'v1.1'
+NET_NAME = 'r_unet'
+VERSION = 'v2.0'
 
 # for the all and single plan, mode can be one of ['cls','seg','mtl'], 
 # but when plan == seg_single, the mode must be 'seg'
 MODE = 'seg'
 
 
-DEVICE = '3,4'
+DEVICE = '0,6'
 # Must be True when pre-training and inference
 PRE_TRAINED = True 
 # 1,2,...,8
@@ -57,17 +57,17 @@ else:
 
 #--------------------------------- others
 INPUT_SHAPE = (256,256)
-BATCH_SIZE = 32
+BATCH_SIZE = 16 * GPU_NUM
 
-
-CKPT_PATH = './ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,'cls','v1.0',ROI_NAME,str(CURRENT_FOLD))
+# CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,MODE,VERSION,ROI_NAME,str(CURRENT_FOLD))
+CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,'mtl','v1.0',ROI_NAME,str(CURRENT_FOLD))
 WEIGHT_PATH = get_weight_path(CKPT_PATH)
 print(WEIGHT_PATH)
 
 INIT_TRAINER = {
   'net_name':NET_NAME,
   'lr':1e-3, 
-  'n_epoch':100,
+  'n_epoch':80,
   'channels':3,
   'num_classes':NUM_CLASSES, 
   'roi_number':ROI_NUMBER,
@@ -77,7 +77,7 @@ INIT_TRAINER = {
   'device':DEVICE,
   'pre_trained':PRE_TRAINED,
   'weight_path':WEIGHT_PATH,
-  'weight_decay': 0.,
+  'weight_decay': 0.001,
   'momentum': 0.9,
   'gamma': 0.1,
   'milestones': [40,80],
@@ -94,7 +94,7 @@ __mtl_loss__ = ['BCEPlusDice']
 if MODE == 'cls':
     LOSS_FUN = 'BCEWithLogitsLoss'
 elif MODE == 'seg' :
-    LOSS_FUN = 'DiceLoss'
+    LOSS_FUN = 'mIoU_loss'
 else:
     LOSS_FUN = 'BCEPlusDice'
 
