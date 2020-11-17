@@ -13,18 +13,18 @@ __mode__ = ['cls','seg','mtl']
 ROI_LIST = ['A','B','C','D','E','F','G']
     
 
-PLAN = 'all'
+PLAN = 'seg_single'
 NET_NAME = 'c_unet'
-VERSION = 'v1.2'
+VERSION = 'v1.0'
 
 # for the all and single plan, mode can be one of ['cls','seg','mtl'], 
 # but when plan == seg_single, the mode must be 'seg'
 MODE = 'seg'
 
 
-DEVICE = '7'
+DEVICE = '6'
 # Must be True when pre-training and inference
-PRE_TRAINED = True 
+PRE_TRAINED = False 
 # 1,2,...,8
 CURRENT_FOLD = 1
 GPU_NUM = len(DEVICE.split(','))
@@ -32,7 +32,7 @@ FOLD_NUM = 9
 
 # Arguments for trainer initialization
 #--------------------------------- single or multiple
-ROI_NUMBER = None# or 0,1,2,3,4,5,6 
+ROI_NUMBER = 6# or 0,1,2,3,4,5,6 
 NUM_CLASSES = len(ROI_LIST) + 1 # 2 for binary, more for multiple classes
 if ROI_NUMBER is not None:
     NUM_CLASSES = 2
@@ -46,7 +46,7 @@ if PLAN == 'seg_single':
     assert ROI_NUMBER is not None, "roi number must not be None in 2d clean"
     LAB_LIST = get_path_with_annotation('./data_utils/annotation.csv','path',ROI_NAME)
     LAB_LIST.sort()
-    IMG_LIST = [os.path.join('/staff/shijun/torch_projects/RSI_SEG20/dataset/img_train',case.split('.')[0] + '.jpg') for case in LAB_LIST]
+    IMG_LIST = [os.path.join('/staff/shijun/torch_projects/RSI_SEG20/dataset/img_train',os.path.basename(case).split('.')[0] + '.jpg') for case in LAB_LIST]
 else:
     IMG_LIST = glob.glob(os.path.join('./dataset/img_train','*.jpg'))
     IMG_LIST.sort()
@@ -57,7 +57,7 @@ else:
 
 #--------------------------------- others
 INPUT_SHAPE = (256,256)
-BATCH_SIZE = 16 * GPU_NUM
+BATCH_SIZE = 32
 
 CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,MODE,VERSION,ROI_NAME,str(CURRENT_FOLD))
 # CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,'mtl','v1.0',ROI_NAME,str(CURRENT_FOLD))
@@ -94,7 +94,7 @@ __mtl_loss__ = ['BCEPlusDice']
 if MODE == 'cls':
     LOSS_FUN = 'BCEWithLogitsLoss'
 elif MODE == 'seg' :
-    LOSS_FUN = 'mIoU_loss'
+    LOSS_FUN = 'DiceLoss'
 else:
     LOSS_FUN = 'BCEPlusDice'
 
