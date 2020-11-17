@@ -14,15 +14,15 @@ ROI_LIST = ['A','B','C','D','E','F','G']
     
 
 PLAN = 'all'
-NET_NAME = 'r_unet'
-VERSION = 'v2.0'
+NET_NAME = 'c_unet'
+VERSION = 'v1.2'
 
 # for the all and single plan, mode can be one of ['cls','seg','mtl'], 
 # but when plan == seg_single, the mode must be 'seg'
 MODE = 'seg'
 
 
-DEVICE = '0,6'
+DEVICE = '7'
 # Must be True when pre-training and inference
 PRE_TRAINED = True 
 # 1,2,...,8
@@ -59,8 +59,8 @@ else:
 INPUT_SHAPE = (256,256)
 BATCH_SIZE = 16 * GPU_NUM
 
-# CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,MODE,VERSION,ROI_NAME,str(CURRENT_FOLD))
-CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,'mtl','v1.0',ROI_NAME,str(CURRENT_FOLD))
+CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,MODE,VERSION,ROI_NAME,str(CURRENT_FOLD))
+# CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,'mtl','v1.0',ROI_NAME,str(CURRENT_FOLD))
 WEIGHT_PATH = get_weight_path(CKPT_PATH)
 print(WEIGHT_PATH)
 

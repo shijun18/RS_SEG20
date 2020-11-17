@@ -3,6 +3,7 @@ import argparse
 from trainer import SemanticSeg
 import pandas as pd
 import random
+from PIL import Image
 
 from config import INIT_TRAINER, SETUP_TRAINER, VERSION, CURRENT_FOLD, LAB_LIST,IMG_LIST, FOLD_NUM
 
@@ -40,7 +41,7 @@ if __name__ == "__main__":
     parser.add_argument('-m',
                         '--mode',
                         default='train_cross_val',
-                        choices=["train", 'train_cross_val', "inf"],
+                        choices=["train", 'train_cross_val', "inf","test"],
                         help='choose the mode',
                         type=str)
     args = parser.parse_args()
@@ -86,14 +87,21 @@ if __name__ == "__main__":
 
     # Inference
     ###############################################
+    if args.mode == 'test':
+        test_path = [IMG_LIST[100:200],LAB_LIST[100:200]]
+        segnetwork.test(test_path,mode='seg')
+
     elif args.mode == 'inf':
-        test_path ='./dataset/img_testA'
+        # test_path ='./dataset/test'
+        test_path = './dataset/img_testA'
         print("test set len:",len(test_path))
+        # save_path = './result/test'
         save_path = './result/testA'
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         start_time = time.time()
-        result = segnetwork.inference(test_path,save_path)
+        palette = Image.open('./dataset/lab_train/T000001.png').getpalette()
+        segnetwork.inference(test_path,save_path,palette=palette)
         print('run time:%.4f' % (time.time() - start_time))
-        print('ave dice:%.4f' % (result))
+  
     ###############################################

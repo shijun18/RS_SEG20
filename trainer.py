@@ -274,7 +274,7 @@ class SemanticSeg(object):
 
             # measure dice and record loss
             dice = compute_dice(seg_output.data, target,ignore_index=self.num_classes-1)
-            # dice = compute_iou(seg_output.data, target)
+            # dice = compute_iou(seg_output.data, target, ignore_index=self.num_classes-1)
             train_loss.update(loss.item(), data.size(0))
             train_dice.update(dice.item(), data.size(0))
 
@@ -350,7 +350,7 @@ class SemanticSeg(object):
 
                 # measure dice and record loss
                 dice = compute_dice(seg_output.data, target, ignore_index=self.num_classes-1)
-                # dice = compute_iou(seg_output.data, target)
+                # dice = compute_iou(seg_output.data, target, ignore_index=self.num_classes-1)
                 val_loss.update(loss.item(), data.size(0))
                 val_dice.update(dice.item(), data.size(0))
 
@@ -365,7 +365,95 @@ class SemanticSeg(object):
 
         return val_loss.avg, val_dice.avg, val_acc.avg
 
-    def inference(self, test_path, save_path, net=None):
+    def test(self, test_path, net=None, mode='seg'):
+        if net is None:
+            net = self.net
+        
+        net = net.cuda()
+        net.eval()
+        
+        if self.mode == 'cls':
+            test_transformer = transforms.Compose([
+                RandomRotate2D(),
+                RandomFlip2D(mode='hv'),
+                To_Tensor(num_class=self.num_classes)
+            ])
+        else:
+            test_transformer = transforms.Compose([
+                RandomFlip2D(mode='hv'),
+                To_Tensor(num_class=self.num_classes)
+            ])
+
+        test_dataset = DataGenerator(test_path[0],
+                                    test_path[1],
+                                    roi_number=self.roi_number,
+                                    num_class=self.num_classes,
+                                    transform=test_transformer)
+
+        test_loader = DataLoader(test_dataset,
+                                batch_size=1,
+                                shuffle=False,
+                                num_workers=self.num_workers,
+                                pin_memory=True)
+
+        test_iou = AverageMeter()
+        test_dice = AverageMeter()
+        test_acc = AverageMeter()
+        from metrics import RunningConfusionMatrix
+        cm = RunningConfusionMatrix(labels=list(range(7)),ignore_label=self.num_classes-1)
+
+        with torch.no_grad():
+            for step, sample in enumerate(test_loader):
+                data = sample['image']
+                target = sample['mask']
+                label = sample['label']
+                print(label)
+
+                data = data.cuda()
+                target = target.cuda()
+                label = label.cuda()
+
+                output = net(data)
+
+                cls_output = output[0]
+                cls_output = F.sigmoid(cls_output).float()
+
+                seg_output = output[1].float()
+
+                # measure acc
+                acc = accuracy(cls_output.data, label)
+                test_acc.update(acc.item(),data.size(0))
+
+                # measure dice and iou for evaluation (float)
+                dice = compute_dice(seg_output.data, target, ignore_index=self.num_classes-1)
+                iou = compute_iou(seg_output.data, target, ignore_index=self.num_classes-1)
+                test_iou.update(iou.item(), data.size(0))
+                test_dice.update(dice.item(), data.size(0))
+                
+                # mIoU (int)
+                seg_output = F.softmax(seg_output, dim=1)
+                cls_output = (cls_output > 0.5).float() # N*C
+                print(cls_output.detach())
+                if mode == 'mtl':
+                    b, c, _, _ = seg_output.size()
+                    seg_output = seg_output * cls_output.view(b,c,1,1).expand_as(seg_output)
+
+                seg_output = torch.argmax(seg_output,1).detach().cpu().numpy()  #N*H*W N=1
+                target = torch.argmax(target,1).detach().cpu().numpy()
+
+                print(np.unique(seg_output),np.unique(target))
+                
+                cm.update_matrix(target.flatten(),seg_output.flatten())
+                miou = cm.compute_current_mean_intersection_over_union()
+
+                torch.cuda.empty_cache()
+                
+                print('step:{},m_iou:{:.5f},test_iou:{:.5f},test_dice:{:.5f},test_acc:{:.5f}'.format(step, miou, iou.item(), dice.item(),acc.item()))
+            
+           
+            print('avg_iou:{:.5f},avg_dice:{:.5f},avg_acc:{:.5f}'.format(test_iou.avg, test_dice.avg, test_acc.avg))
+
+    def inference(self, test_path, save_path, net=None, palette=None):
 
         if net is None:
             net = self.net
@@ -402,9 +490,12 @@ class SemanticSeg(object):
                     print("cls result:",cls_output)
 
                 seg_output = torch.argmax(seg_output,1).detach().cpu().numpy()  #N*H*W N=1
+                print(np.unique(seg_output))
                 seg_output = np.squeeze(seg_output).astype(np.uint8)  #H*W
-                # seg_output[seg_output > 6] = 0
+                seg_output[seg_output > 6] = 255
                 seg_output = Image.fromarray(seg_output, mode='P')
+                if palette is not None:
+                    seg_output.putpalette(palette)
 
                 # save
                 seg_output.save(os.path.join(save_path,item.name.split('.')[0] + '.png'))
