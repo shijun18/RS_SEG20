@@ -254,7 +254,7 @@ class SemanticSeg(object):
             if self.mode == 'cls':
                 loss = criterion(output[0], label)
             elif self.mode == 'seg':
-                loss = criterion(output[1], target)
+                loss = criterion(output[1], target, weight=output[0])
             else:
                 loss = criterion(output,[label,target])
 
@@ -641,13 +641,14 @@ def binary_dice(predict, target, smooth=1e-5):
     return dice.mean()
 
 
-def compute_dice(predict, target, ignore_index=0):
+def compute_dice(predict, target, ignore_index=0, weight=None):
     """
     Compute dice
     Args:
         predict: A tensor of shape [N, C, *]
         target: A tensor of same shape with predict
         ignore_index: class index to ignore
+        weight: shape=[N,C]
     Return:
         mean dice over the batch
     """
@@ -656,7 +657,10 @@ def compute_dice(predict, target, ignore_index=0):
     predict = F.softmax(predict, dim=1)
     for i in range(target.shape[1]):
         if i != ignore_index:
-            dice = binary_dice(predict[:, i], target[:, i])
+            if weight is not None:
+                dice = binary_dice(predict[:, i], target[:, i], weight[:,i])
+            else:
+                dice = binary_dice(predict[:, i], target[:, i])
             total_dice += dice
 
     if ignore_index is not None:

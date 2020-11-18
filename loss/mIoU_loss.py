@@ -56,7 +56,7 @@ class mIoU_loss(nn.Module):
     def __init__(self, weight=None, ignore_index=None, **kwargs):
         super(mIoU_loss, self).__init__()
         self.kwargs = kwargs
-        self.weight = weight
+         self.class_weight = weight
         self.ignore_index = ignore_index
 
     def forward(self, predict, target):
@@ -68,10 +68,10 @@ class mIoU_loss(nn.Module):
         for i in range(target.shape[1]):
             if i != self.ignore_index:
                 iou_loss = iou(predict[:, i], target[:, i])
-                if self.weight is not None:
-                    assert self.weight.shape[0] == target.shape[1], \
-                        'Expect weight shape [{}], get[{}]'.format(target.shape[1], self.weight.shape[0])
-                    iou_loss *= self.weights[i]
+                if self.class_weight is not None:
+                    assert  self.class_weight[0] == target.shape[1], \
+                        'Expect weight shape [{}], get[{}]'.format(target.shape[1], self.class_weight.shape[0])
+                    iou_loss *= self.class_weight[i]
                 total_loss += iou_loss
         if self.ignore_index is not None:
             return total_loss/(target.shape[1] - 1)

@@ -13,7 +13,7 @@ __mode__ = ['cls','seg','mtl']
 ROI_LIST = ['A','B','C','D','E','F','G']
     
 
-PLAN = 'seg_single'
+PLAN = 'all'
 NET_NAME = 'c_unet'
 VERSION = 'v1.0'
 
@@ -22,9 +22,9 @@ VERSION = 'v1.0'
 MODE = 'seg'
 
 
-DEVICE = '6'
+DEVICE = '3'
 # Must be True when pre-training and inference
-PRE_TRAINED = False 
+PRE_TRAINED = True 
 # 1,2,...,8
 CURRENT_FOLD = 1
 GPU_NUM = len(DEVICE.split(','))
@@ -32,7 +32,7 @@ FOLD_NUM = 9
 
 # Arguments for trainer initialization
 #--------------------------------- single or multiple
-ROI_NUMBER = 6# or 0,1,2,3,4,5,6 
+ROI_NUMBER = None# or 0,1,2,3,4,5,6 
 NUM_CLASSES = len(ROI_LIST) + 1 # 2 for binary, more for multiple classes
 if ROI_NUMBER is not None:
     NUM_CLASSES = 2

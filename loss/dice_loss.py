@@ -22,7 +22,10 @@ class BinaryDiceLoss(nn.Module):
         self.p = p
         self.reduction = reduction
 
-    def forward(self, predict, target):
+    def forward(self, predict, target, weight=None):
+        """
+        If weight is not None, shape=[N]
+        """
         assert predict.shape[0] == target.shape[0], "predict & target batch size don't match"
         predict = predict.contiguous().view(predict.shape[0], -1)
         target = target.contiguous().view(target.shape[0], -1)
@@ -33,7 +36,10 @@ class BinaryDiceLoss(nn.Module):
         loss = 1 - (2*inter + self.smooth)/ (union + self.smooth)
 
         if self.reduction == 'mean':
-            return loss.mean()
+            if weight is not None:
+                return loss.sum() / weight.sum()
+            else:
+                return loss.mean()
         elif self.reduction == 'sum':
             return loss.sum()
         elif self.reduction == 'none':
@@ -56,10 +62,13 @@ class DiceLoss(nn.Module):
     def __init__(self, weight=None, ignore_index=None, **kwargs):
         super(DiceLoss, self).__init__()
         self.kwargs = kwargs
-        self.weight = weight
+        self.class_weight = weight
         self.ignore_index = ignore_index
 
-    def forward(self, predict, target):
+    def forward(self, predict, target, weight=None):
+        """
+        If weight is not None, shape = [N*C] 
+        """
         assert predict.shape == target.shape, 'predict & target shape do not match'
         dice = BinaryDiceLoss(**self.kwargs)
         total_loss = 0
@@ -67,11 +76,14 @@ class DiceLoss(nn.Module):
 
         for i in range(target.shape[1]):
             if i != self.ignore_index:
-                dice_loss = dice(predict[:, i], target[:, i])
-                if self.weight is not None:
-                    assert self.weight.shape[0] == target.shape[1], \
-                        'Expect weight shape [{}], get[{}]'.format(target.shape[1], self.weight.shape[0])
-                    dice_loss *= self.weights[i]
+                if weight is not None:
+                    dice_loss = dice(predict[:, i], target[:, i], weight[:,i])
+                else:
+                    dice_loss = dice(predict[:, i], target[:, i])
+                if self.class_weight is not None:
+                    assert  self.class_weight.shape[0] == target.shape[1], \
+                        'Expect weight shape [{}], get[{}]'.format(target.shape[1],  self.class_weight.shape[0])
+                    dice_loss *=  self.class_weight[i]
                 total_loss += dice_loss
         if self.ignore_index is not None:
             return total_loss/(target.shape[1] - 1)
