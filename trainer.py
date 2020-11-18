@@ -640,7 +640,7 @@ def binary_dice(predict, target, weight=None, smooth=1e-5):
 
     if weight is not None:
         dice = dice * weight
-        return dice.sum() / weight.sum()
+        return dice.sum() / (weight.sum() + smooth)
     else:
         return dice.mean()
 

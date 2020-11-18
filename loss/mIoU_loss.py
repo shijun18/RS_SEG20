@@ -35,7 +35,7 @@ class BinaryIoU(nn.Module):
         if self.reduction == 'mean':
             if weight is not None:
                 loss = loss*weight
-                return loss.sum() / weight.sum()
+                return loss.sum() / (weight.sum() + + self.smooth)
             else:
                 return loss.mean()
         elif self.reduction == 'sum':
