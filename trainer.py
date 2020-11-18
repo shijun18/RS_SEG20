@@ -254,7 +254,7 @@ class SemanticSeg(object):
             if self.mode == 'cls':
                 loss = criterion(output[0], label)
             elif self.mode == 'seg':
-                loss = criterion(output[1], target, weight=output[0])
+                loss = criterion(output[1], target, weight=label)
             else:
                 loss = criterion(output,[label,target])
 
@@ -273,7 +273,7 @@ class SemanticSeg(object):
             train_acc.update(acc.item(), data.size(0))
 
             # measure dice and record loss
-            dice = compute_dice(seg_output.data, target,ignore_index=self.num_classes-1)
+            dice = compute_dice(seg_output.data, target,ignore_index=self.num_classes-1,weight=label)
             # dice = compute_iou(seg_output.data, target, ignore_index=self.num_classes-1)
             train_loss.update(loss.item(), data.size(0))
             train_dice.update(dice.item(), data.size(0))
@@ -333,7 +333,7 @@ class SemanticSeg(object):
                 if self.mode == 'cls':
                     loss = criterion(output[0], label)
                 elif self.mode == 'seg':
-                    loss = criterion(output[1], target)
+                    loss = criterion(output[1], target, weight=label)
                 else:
                     loss = criterion(output,[label,target])
 
@@ -349,7 +349,7 @@ class SemanticSeg(object):
                 val_acc.update(acc.item(),data.size(0))
 
                 # measure dice and record loss
-                dice = compute_dice(seg_output.data, target, ignore_index=self.num_classes-1)
+                dice = compute_dice(seg_output.data, target, ignore_index=self.num_classes-1, weight=label)
                 # dice = compute_iou(seg_output.data, target, ignore_index=self.num_classes-1)
                 val_loss.update(loss.item(), data.size(0))
                 val_dice.update(dice.item(), data.size(0))
@@ -618,7 +618,7 @@ def binary_iou(predict, target, smooth=1e-5):
 
 
 
-def binary_dice(predict, target, smooth=1e-5):
+def binary_dice(predict, target, weight=None, smooth=1e-5):
     """Dice of binary class
     Args:
         smooth: A float number to smooth loss, and avoid NaN error, default: 1e-5
@@ -638,7 +638,11 @@ def binary_dice(predict, target, smooth=1e-5):
 
     dice = (2 * inter + smooth) / (union + smooth)
 
-    return dice.mean()
+    if weight is not None:
+        dice = dice * weight
+        return dice.sum() / weight.sum()
+    else:
+        return dice.mean()
 
 
 def compute_dice(predict, target, ignore_index=0, weight=None):

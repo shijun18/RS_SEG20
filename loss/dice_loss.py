@@ -32,11 +32,12 @@ class BinaryDiceLoss(nn.Module):
 
         inter = torch.sum(torch.mul(predict, target), dim=1)
         union = torch.sum(predict.pow(self.p) + target.pow(self.p), dim=1)
-
+        
         loss = 1 - (2*inter + self.smooth)/ (union + self.smooth)
 
         if self.reduction == 'mean':
             if weight is not None:
+                loss = loss*weight
                 return loss.sum() / weight.sum()
             else:
                 return loss.mean()

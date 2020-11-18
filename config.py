@@ -15,16 +15,16 @@ ROI_LIST = ['A','B','C','D','E','F','G']
 
 PLAN = 'all'
 NET_NAME = 'c_unet'
-VERSION = 'v1.0'
+VERSION = 'v1.5'
 
 # for the all and single plan, mode can be one of ['cls','seg','mtl'], 
 # but when plan == seg_single, the mode must be 'seg'
 MODE = 'seg'
 
 
-DEVICE = '3'
+DEVICE = '3,6'
 # Must be True when pre-training and inference
-PRE_TRAINED = True 
+PRE_TRAINED = False 
 # 1,2,...,8
 CURRENT_FOLD = 1
 GPU_NUM = len(DEVICE.split(','))
@@ -57,7 +57,7 @@ else:
 
 #--------------------------------- others
 INPUT_SHAPE = (256,256)
-BATCH_SIZE = 32
+BATCH_SIZE = 96
 
 CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,MODE,VERSION,ROI_NAME,str(CURRENT_FOLD))
 # CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,'mtl','v1.0',ROI_NAME,str(CURRENT_FOLD))

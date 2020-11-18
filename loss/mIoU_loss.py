@@ -22,7 +22,7 @@ class BinaryIoU(nn.Module):
         self.p = p
         self.reduction = reduction
 
-    def forward(self, predict, target):
+    def forward(self, predict, target, weight=None):
         assert predict.shape[0] == target.shape[0], "predict & target batch size don't match"
         predict = predict.contiguous().view(predict.shape[0], -1)
         target = target.contiguous().view(target.shape[0], -1)
@@ -33,7 +33,11 @@ class BinaryIoU(nn.Module):
         loss = 1 - (inter + self.smooth)/ (union - inter + self.smooth)
 
         if self.reduction == 'mean':
-            return loss.mean()
+            if weight is not None:
+                loss = loss*weight
+                return loss.sum() / weight.sum()
+            else:
+                return loss.mean()
         elif self.reduction == 'sum':
             return loss.sum()
         elif self.reduction == 'none':
@@ -56,10 +60,10 @@ class mIoU_loss(nn.Module):
     def __init__(self, weight=None, ignore_index=None, **kwargs):
         super(mIoU_loss, self).__init__()
         self.kwargs = kwargs
-         self.class_weight = weight
+        self.class_weight = weight
         self.ignore_index = ignore_index
 
-    def forward(self, predict, target):
+    def forward(self, predict, target, weight=None):
         assert predict.shape == target.shape, 'predict & target shape do not match'
         iou = BinaryIoU(**self.kwargs)
         total_loss = 0
@@ -67,7 +71,10 @@ class mIoU_loss(nn.Module):
 
         for i in range(target.shape[1]):
             if i != self.ignore_index:
-                iou_loss = iou(predict[:, i], target[:, i])
+                if weight is not None:
+                    iou_loss = iou(predict[:, i], target[:, i], weight[:,i])
+                else:
+                    iou_loss = iou(predict[:, i], target[:, i])
                 if self.class_weight is not None:
                     assert  self.class_weight[0] == target.shape[1], \
                         'Expect weight shape [{}], get[{}]'.format(target.shape[1], self.class_weight.shape[0])
