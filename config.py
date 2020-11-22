@@ -66,7 +66,7 @@ print(WEIGHT_PATH)
 
 INIT_TRAINER = {
   'net_name':NET_NAME,
-  'lr':1e-3, 
+  'lr':4e-3, 
   'n_epoch':80,
   'channels':3,
   'num_classes':NUM_CLASSES, 
@@ -103,7 +103,7 @@ SETUP_TRAINER = {
   'log_dir':'./log/{}/{}/{}/{}'.format(PLAN,MODE,VERSION,ROI_NAME), 
   'optimizer':'Adam',
   'loss_fun':LOSS_FUN,
-  'class_weight':[2,1,1,1,4,4,3,1],
+  'class_weight':None, #[2,1,1,1,4,4,3,1]
   'lr_scheduler': 'CosineAnnealingLR', #'CosineAnnealingLR'
   }
 #---------------------------------

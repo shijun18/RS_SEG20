@@ -522,9 +522,11 @@ class SemanticSeg(object):
             class_weight = torch.tensor(class_weight)
 
         if loss_fun == 'Cross_Entropy':
-            from loss.cross_entropy import FloatCrossEntropy
-            loss = FloatCrossEntropy(class_weight, ignore_index=self.num_classes-1)
-
+            from loss.cross_entropy import CrossentropyLoss
+            loss = CrossentropyLoss(weight=class_weight, ignore_index=self.num_classes-1)
+        elif loss_fun == 'TopKLoss':
+            from loss.cross_entropy import TopKLoss
+            loss = TopKLoss(weight=class_weight, ignore_index=self.num_classes-1, k=20)
         elif loss_fun == 'DiceLoss':
             from loss.dice_loss import DiceLoss
             loss = DiceLoss(weight=class_weight, ignore_index=self.num_classes-1, p=1)
@@ -668,7 +670,7 @@ def compute_dice(predict, target, ignore_index=0):
             dice = binary_dice(predict[:, i], target[:, i])
             # print(dice)
             total_dice += dice
-            dice_list.append(dice.item())
+            dice_list.append(round(dice.item(),4))
     print(dice_list)
 
     if ignore_index is not None:
