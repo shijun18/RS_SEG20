@@ -5,6 +5,7 @@ sys.path.append('..')
 from torch.utils.data import Dataset
 import torch
 import numpy as np
+import random
 
 from PIL import Image
 
@@ -58,13 +59,17 @@ class DataGenerator(Dataset):
                  lab_list=None,
                  roi_number=None,
                  num_class=2,
-                 transform=None):
+                 transform=None,
+                 crop_and_resize=False,
+                 input_shape=None):
 
         self.img_list = img_list
         self.lab_list = lab_list
         self.roi_number = roi_number
         self.num_class = num_class
         self.transform = transform
+        self.crop_and_resize = crop_and_resize
+        self.input_shape = input_shape
 
     def __len__(self):
         assert len(self.img_list) == len(self.lab_list), "The numbers of images and annotations should be the same."
@@ -76,6 +81,8 @@ class DataGenerator(Dataset):
         mask = Image.open(self.lab_list[index])
         # print(self.img_list[index])
         # print(self.lab_list[index])
+        if self.crop_and_resize:
+            image, mask = self._crop_and_resize(image,mask)
         assert os.path.splitext(os.path.basename(self.img_list[index]))[0] == os.path.splitext(os.path.basename(self.lab_list[index]))[0]
         if self.roi_number is not None:
             assert self.num_class == 2
@@ -92,3 +99,20 @@ class DataGenerator(Dataset):
             sample = self.transform(sample)
 
         return sample
+    
+    def _crop_and_resize(self, image, mask, ratio=4):
+        assert self.input_shape is not None
+        height, weight = self.input_shape[0] // ratio, self.input_shape[1] // ratio
+        left = random.choice([np.random.randint(0,(self.input_shape[1] - weight)//2),
+                              np.random.randint((self.input_shape[1] + weight)//2,self.input_shape[1] - weight)])
+        upper = random.choice([np.random.randint(0,(self.input_shape[0] - height)//2),
+                               np.random.randint((self.input_shape[0] + height)//2,self.input_shape[0] - height)])
+        image = image.crop((left,upper,left+weight,upper+height))
+        mask = mask.crop((left,upper,left+weight,upper+height))
+        
+        # resize
+        image = image.resize(self.input_shape, Image.BILINEAR)
+        mask = mask.resize(self.input_shape, Image.NEAREST)
+        return image, mask
+
+

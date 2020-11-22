@@ -154,7 +154,9 @@ class SemanticSeg(object):
                                       train_path[1],
                                       roi_number=self.roi_number,
                                       num_class=self.num_classes,
-                                      transform=train_transformer)
+                                      transform=train_transformer,
+                                    #   crop_and_resize=True,
+                                      input_shape=self.input_shape)
 
         train_loader = DataLoader(train_dataset,
                                   batch_size=self.batch_size,
@@ -254,7 +256,7 @@ class SemanticSeg(object):
             if self.mode == 'cls':
                 loss = criterion(output[0], label)
             elif self.mode == 'seg':
-                loss = criterion(output[1], target, weight=label)
+                loss = criterion(output[1], target)
             else:
                 loss = criterion(output,[label,target])
 
@@ -273,7 +275,7 @@ class SemanticSeg(object):
             train_acc.update(acc.item(), data.size(0))
 
             # measure dice and record loss
-            dice = compute_dice(seg_output.data, target,ignore_index=self.num_classes-1,weight=label)
+            dice = compute_dice(seg_output.data, target, ignore_index=self.num_classes-1)
             # dice = compute_iou(seg_output.data, target, ignore_index=self.num_classes-1)
             train_loss.update(loss.item(), data.size(0))
             train_dice.update(dice.item(), data.size(0))
@@ -307,7 +309,9 @@ class SemanticSeg(object):
                                     val_path[1],
                                     roi_number=self.roi_number,
                                     num_class=self.num_classes,
-                                    transform=val_transformer)
+                                    transform=val_transformer,
+                                    # crop_and_resize=True,
+                                    input_shape=self.input_shape)
 
         val_loader = DataLoader(val_dataset,
                                 batch_size=self.batch_size,
@@ -333,7 +337,7 @@ class SemanticSeg(object):
                 if self.mode == 'cls':
                     loss = criterion(output[0], label)
                 elif self.mode == 'seg':
-                    loss = criterion(output[1], target, weight=label)
+                    loss = criterion(output[1], target)
                 else:
                     loss = criterion(output,[label,target])
 
@@ -349,7 +353,7 @@ class SemanticSeg(object):
                 val_acc.update(acc.item(),data.size(0))
 
                 # measure dice and record loss
-                dice = compute_dice(seg_output.data, target, ignore_index=self.num_classes-1, weight=label)
+                dice = compute_dice(seg_output.data, target, ignore_index=self.num_classes-1)
                 # dice = compute_iou(seg_output.data, target, ignore_index=self.num_classes-1)
                 val_loss.update(loss.item(), data.size(0))
                 val_dice.update(dice.item(), data.size(0))
@@ -444,14 +448,14 @@ class SemanticSeg(object):
                 print(np.unique(seg_output),np.unique(target))
                 
                 cm.update_matrix(target.flatten(),seg_output.flatten())
-                miou = cm.compute_current_mean_intersection_over_union()
+                
 
                 torch.cuda.empty_cache()
                 
-                print('step:{},m_iou:{:.5f},test_iou:{:.5f},test_dice:{:.5f},test_acc:{:.5f}'.format(step, miou, iou.item(), dice.item(),acc.item()))
+                print('step:{},test_iou:{:.5f},test_dice:{:.5f},test_acc:{:.5f}'.format(step,iou.item(), dice.item(),acc.item()))
             
-           
-            print('avg_iou:{:.5f},avg_dice:{:.5f},avg_acc:{:.5f}'.format(test_iou.avg, test_dice.avg, test_acc.avg))
+            miou = cm.compute_current_mean_intersection_over_union()
+            print('miou:{:.5f},avg_iou:{:.5f},avg_dice:{:.5f},avg_acc:{:.5f}'.format(miou,test_iou.avg, test_dice.avg, test_acc.avg))
 
     def inference(self, test_path, save_path, net=None, palette=None):
 
@@ -508,6 +512,9 @@ class SemanticSeg(object):
         elif net_name == 'r_unet':
             from model.unet import unet
             net = unet(n_channels=self.channels, n_classes=self.num_classes, revise=True)
+        elif net_name == 'e_unet':
+            from model.unet import unet
+            net = unet(n_channels=self.channels, n_classes=self.num_classes, cls_location='end')
         return net
 
     def _get_loss(self, loss_fun, class_weight=None):
@@ -618,7 +625,7 @@ def binary_iou(predict, target, smooth=1e-5):
 
 
 
-def binary_dice(predict, target, weight=None, smooth=1e-5):
+def binary_dice(predict, target, smooth=1e-5):
     """Dice of binary class
     Args:
         smooth: A float number to smooth loss, and avoid NaN error, default: 1e-5
@@ -638,34 +645,31 @@ def binary_dice(predict, target, weight=None, smooth=1e-5):
 
     dice = (2 * inter + smooth) / (union + smooth)
 
-    if weight is not None:
-        dice = dice * weight
-        return dice.sum() / (weight.sum() + smooth)
-    else:
-        return dice.mean()
+    return dice.mean()
 
 
-def compute_dice(predict, target, ignore_index=0, weight=None):
+def compute_dice(predict, target, ignore_index=0):
     """
     Compute dice
     Args:
         predict: A tensor of shape [N, C, *]
         target: A tensor of same shape with predict
         ignore_index: class index to ignore
-        weight: shape=[N,C]
     Return:
         mean dice over the batch
     """
     assert predict.shape == target.shape, 'predict & target shape do not match'
     total_dice = 0.
     predict = F.softmax(predict, dim=1)
+    # predict = F.sigmoid(predict)
+    dice_list = []
     for i in range(target.shape[1]):
         if i != ignore_index:
-            if weight is not None:
-                dice = binary_dice(predict[:, i], target[:, i], weight[:,i])
-            else:
-                dice = binary_dice(predict[:, i], target[:, i])
+            dice = binary_dice(predict[:, i], target[:, i])
+            # print(dice)
             total_dice += dice
+            dice_list.append(dice.item())
+    print(dice_list)
 
     if ignore_index is not None:
         return total_dice / (target.shape[1] - 1)

@@ -15,14 +15,14 @@ ROI_LIST = ['A','B','C','D','E','F','G']
 
 PLAN = 'all'
 NET_NAME = 'c_unet'
-VERSION = 'v1.5'
+VERSION = 'v1.8'
 
 # for the all and single plan, mode can be one of ['cls','seg','mtl'], 
 # but when plan == seg_single, the mode must be 'seg'
 MODE = 'seg'
 
 
-DEVICE = '3,6'
+DEVICE = '0,1,4,6'
 # Must be True when pre-training and inference
 PRE_TRAINED = False 
 # 1,2,...,8
@@ -57,7 +57,7 @@ else:
 
 #--------------------------------- others
 INPUT_SHAPE = (256,256)
-BATCH_SIZE = 96
+BATCH_SIZE = 32*4
 
 CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,MODE,VERSION,ROI_NAME,str(CURRENT_FOLD))
 # CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,'mtl','v1.0',ROI_NAME,str(CURRENT_FOLD))
@@ -103,7 +103,7 @@ SETUP_TRAINER = {
   'log_dir':'./log/{}/{}/{}/{}'.format(PLAN,MODE,VERSION,ROI_NAME), 
   'optimizer':'Adam',
   'loss_fun':LOSS_FUN,
-  'class_weight':None,
+  'class_weight':[2,1,1,1,4,4,3,1],
   'lr_scheduler': 'CosineAnnealingLR', #'CosineAnnealingLR'
   }
 #---------------------------------
