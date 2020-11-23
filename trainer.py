@@ -552,7 +552,7 @@ class SemanticSeg(object):
         
         elif loss_fun == 'BCEPlusDice':
             from loss.combine_loss import BCEPlusDice
-            loss = BCEPlusDice(weight=class_weight,ignore_index=0,p=2)
+            loss = BCEPlusDice(weight=class_weight,ignore_index=0,p=1)
         
         elif loss_fun == 'CEPlusDice':
             from loss.combine_loss import CEPlusDice

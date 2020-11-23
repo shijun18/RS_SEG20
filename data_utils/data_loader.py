@@ -37,8 +37,7 @@ class To_Tensor(object):
         # convert to Tensor
         new_sample = {
             'image': torch.from_numpy(new_image),
-            'mask': torch.from_numpy(new_mask),
-            'label': torch.Tensor(sample['label'])
+            'mask': torch.from_numpy(new_mask)
         }
 
         return new_sample
@@ -92,14 +91,15 @@ class DataGenerator(Dataset):
             mask_array[mask_array > 255] = 0
             mask = Image.fromarray(mask_array.astype(np.uint8))
 
-        label = np.zeros((self.num_class, ), dtype=np.float32)
-        label_array = np.array(mask)
-        label[np.unique(label_array).astype(np.uint8)] = 1
-
-        sample = {'image': image, 'mask': mask, 'label': list(label)}
-        # Transform
+        sample = {'image': image, 'mask': mask}
         if self.transform is not None:
             sample = self.transform(sample)
+
+        label = np.zeros((self.num_class, ), dtype=np.float32)
+        label_array = np.argmax(sample['mask'].numpy(),axis=0)
+        label[np.unique(label_array).astype(np.uint8)] = 1
+
+        sample['label'] = torch.Tensor(list(label))
 
         return sample
     

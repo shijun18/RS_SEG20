@@ -39,7 +39,7 @@ class RandomFlip2D(object):
             image = image.transpose(Image.FLIP_TOP_BOTTOM)
             mask = mask.transpose(Image.FLIP_TOP_BOTTOM)
 
-        new_sample = {'image': image, 'mask': mask, 'label': sample['label']}
+        new_sample = {'image': image, 'mask': mask}
 
         return new_sample
 
@@ -65,5 +65,5 @@ class RandomRotate2D(object):
         image = image.rotate(rotate_degree, Image.BILINEAR)
         mask = mask.rotate(rotate_degree, Image.NEAREST)
 
-        new_sample = {'image': image, 'mask': mask, 'label': sample['label']}
+        new_sample = {'image': image, 'mask': mask}
         return new_sample
