@@ -30,10 +30,10 @@ class To_Tensor(object):
         else:
             new_image = image.transpose((2, 0, 1))
         new_mask = np.empty((self.num_class, ) + mask.shape, dtype=np.float32)
-        for z in range(self.num_class - 1):
+        for z in range(1,self.num_class):
             temp = (mask == z).astype(np.float32)
             new_mask[z, ...] = temp
-        new_mask[self.num_class - 1,...] = np.amax(new_mask[:self.num_class - 1, ...],axis=0) == 0
+        new_mask[0,...] = np.amax(new_mask[1:, ...],axis=0) == 0
         # convert to Tensor
         new_sample = {
             'image': torch.from_numpy(new_image),
@@ -86,11 +86,14 @@ class DataGenerator(Dataset):
         assert os.path.splitext(os.path.basename(self.img_list[index]))[0] == os.path.splitext(os.path.basename(self.lab_list[index]))[0]
         if self.roi_number is not None:
             assert self.num_class == 2
-            mask = Image.fromarray((np.array(mask) != self.roi_number).astype(np.uint8))
+            mask = Image.fromarray((np.array(mask) == self.roi_number).astype(np.uint8))
+        else:
+            mask_array = np.array(mask) + 1
+            mask_array[mask_array > 255] = 0
+            mask = Image.fromarray(mask_array.astype(np.uint8))
 
         label = np.zeros((self.num_class, ), dtype=np.float32)
         label_array = np.array(mask)
-        label_array[label_array == 255] = 7
         label[np.unique(label_array).astype(np.uint8)] = 1
 
         sample = {'image': image, 'mask': mask, 'label': list(label)}
