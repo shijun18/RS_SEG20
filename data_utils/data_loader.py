@@ -58,6 +58,7 @@ class DataGenerator(Dataset):
                  lab_list=None,
                  roi_number=None,
                  num_class=2,
+                 input_channels=1,
                  transform=None,
                  crop_and_resize=False,
                  input_shape=None):
@@ -66,6 +67,7 @@ class DataGenerator(Dataset):
         self.lab_list = lab_list
         self.roi_number = roi_number
         self.num_class = num_class
+        self.input_channels = input_channels
         self.transform = transform
         self.crop_and_resize = crop_and_resize
         self.input_shape = input_shape
@@ -76,10 +78,13 @@ class DataGenerator(Dataset):
 
     def __getitem__(self, index):
         # Get image and mask
-        image = Image.open(self.img_list[index])
+        if self.input_channels == 1:
+            image = Image.open(self.img_list[index]).convert('L')
+        else:
+            image = Image.open(self.img_list[index])
         mask = Image.open(self.lab_list[index])
-        # print(self.img_list[index])
-        # print(self.lab_list[index])
+        print(self.img_list[index])
+        print(self.lab_list[index])
         if self.crop_and_resize:
             image, mask = self._crop_and_resize(image,mask)
         assert os.path.splitext(os.path.basename(self.img_list[index]))[0] == os.path.splitext(os.path.basename(self.lab_list[index]))[0]
@@ -100,6 +105,7 @@ class DataGenerator(Dataset):
         label[np.unique(label_array).astype(np.uint8)] = 1
 
         sample['label'] = torch.Tensor(list(label))
+        # print(np.unique(np.argmax(np.array(sample['mask']),axis=0)))
 
         return sample
     

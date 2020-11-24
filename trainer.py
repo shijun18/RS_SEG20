@@ -146,7 +146,7 @@ class SemanticSeg(object):
             ])
         else:
             train_transformer = transforms.Compose([
-                RandomRotate2D(),
+                # RandomRotate2D(),
                 RandomFlip2D(mode='hv'),
                 To_Tensor(num_class=self.num_classes)
             ])
@@ -155,6 +155,7 @@ class SemanticSeg(object):
                                       train_path[1],
                                       roi_number=self.roi_number,
                                       num_class=self.num_classes,
+                                      input_channels=self.channels,
                                       transform=train_transformer,
                                     #   crop_and_resize=True,
                                       input_shape=self.input_shape)
@@ -247,6 +248,7 @@ class SemanticSeg(object):
 
             data = sample['image']
             target = sample['mask']
+            # print(np.unique(np.argmax(np.array(target[0]),axis=0)))
             label = sample['label']
 
             data = data.cuda()
@@ -310,6 +312,7 @@ class SemanticSeg(object):
                                     val_path[1],
                                     roi_number=self.roi_number,
                                     num_class=self.num_classes,
+                                    input_channels=self.channels,
                                     transform=val_transformer,
                                     # crop_and_resize=True,
                                     input_shape=self.input_shape)
@@ -393,6 +396,7 @@ class SemanticSeg(object):
                                     test_path[1],
                                     roi_number=self.roi_number,
                                     num_class=self.num_classes,
+                                    input_shape=self.channels,
                                     transform=test_transformer)
 
         test_loader = DataLoader(test_dataset,
