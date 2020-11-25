@@ -49,7 +49,7 @@ class RunningConfusionMatrix():
         current_confusion_matrix = confusion_matrix(y_true=ground_truth,
                                                     y_pred=prediction,
                                                     labels=self.labels)
-        if current_confusion_matrix is not None:
+        if self.overall_confusion_matrix is not None:
             self.overall_confusion_matrix += current_confusion_matrix
         else:
             self.overall_confusion_matrix = current_confusion_matrix
