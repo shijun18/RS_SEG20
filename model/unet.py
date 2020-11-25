@@ -71,7 +71,7 @@ class Up2D(nn.Module):
 class Tail2D(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(Tail2D, self).__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=3,padding=1)
 
     def forward(self, x):
         return self.conv(x)
@@ -115,12 +115,12 @@ class UNet(nn.Module):
                 nn.Linear(width[0], self.n_classes),
             )
 
-        # for m in self.modules():
-        #     if isinstance(m, nn.Conv2d):
-        #         nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-        #     elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
-        #         nn.init.constant_(m.weight, 1)
-        #         nn.init.constant_(m.bias, 0)
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
 
     def forward(self, x):
@@ -156,9 +156,88 @@ class UNet(nn.Module):
         return [cls_logits,seg_logits]
 
 
+class SimpleUNet(nn.Module):
+    def __init__(self, stem, down, up, tail, width, conv_builder, n_channels=1, n_classes=2, bilinear=True, dropout_flag=True, cls_location='middle'):
+        super(SimpleUNet, self).__init__()
+        self.n_channels = n_channels
+        self.n_classes = n_classes
+        self.bilinear = bilinear
+        self.width = width
+        self.dropout_flag = dropout_flag
+        self.cls_location = cls_location
+        factor = 2 if bilinear else 1
+
+        self.inc = stem(n_channels, width[0])
+        self.down1 = down(width[0], width[1], conv_builder)
+        self.down2 = down(width[1], width[2], conv_builder)
+        self.down3 = down(width[2], width[3], conv_builder)
+        self.down4 = down(width[3], width[4] // factor, conv_builder)
+        self.up1 = up(width[4], width[3] // factor, conv_builder, bilinear=self.bilinear)
+        self.up2 = up(width[3], width[2]// factor, conv_builder, bilinear=self.bilinear)
+        self.up3 = up(width[2], width[1] // factor, conv_builder, bilinear=self.bilinear)
+        self.up4 = up(width[1], width[0], conv_builder, bilinear=self.bilinear)
+        self.dropout = nn.Dropout(p=0.5)
+        self.outc = tail(width[0],  self.n_classes)
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        
+        if self.cls_location == 'middle':
+            self.clssifier = nn.Sequential(
+                nn.Linear(width[4] // factor, 64),
+                nn.ReLU(True),
+                nn.Linear(64, self.n_classes)
+            ) 
+        else:
+            self.clssifier = nn.Sequential(
+                nn.Linear(width[0], self.n_classes),
+            )
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+
+    def forward(self, x):
+        x1 = self.inc(x)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x5 = self.down4(x4)
+
+        x = self.up1(x5, x4)
+        x = self.up2(x, x3)
+        x = self.up3(x, x2)
+        x = self.up4(x, x1)
+
+        if self.cls_location == 'middle':
+            avg_pool = self.avgpool(x5)
+        else:
+            avg_pool = self.avgpool(x)
+
+        flatten = torch.flatten(avg_pool,1)
+        cls_logits = self.clssifier(flatten)
+
+        if self.dropout_flag:
+            x = self.dropout(x)
+        seg_logits = self.outc(x)
+
+        return [cls_logits,seg_logits]
+
 
 def unet(**kwargs):
     return UNet(stem=DoubleConv2D,
+                down=Down2D,
+                up=Up2D,
+                tail=Tail2D,
+                width=[64,128,256,512,1024],
+                conv_builder=DoubleConv2D,
+                **kwargs)
+
+def simple_unet(**kwargs):
+    return SimpleUNet(stem=DoubleConv2D,
                 down=Down2D,
                 up=Up2D,
                 tail=Tail2D,

@@ -183,15 +183,12 @@ class SemanticSeg(object):
         for epoch in range(self.start_epoch, self.n_epoch):
             train_loss, train_dice, train_acc = self._train_on_epoch(epoch, net, loss, optimizer, train_loader)
 
-            torch.cuda.empty_cache()
-
             val_loss, val_dice, val_acc = self._val_on_epoch(epoch, net, loss, val_path, train_transformer)
-
-            torch.cuda.empty_cache()
 
             if lr_scheduler is not None:
                 lr_scheduler.step(val_loss)
 
+            torch.cuda.empty_cache()
             print('epoch:{},train_loss:{:.5f},val_loss:{:.5f}'.format(epoch, train_loss, val_loss))
 
             print('epoch:{},train_dice:{:.5f},val_dice:{:.5f}'.format(epoch, train_dice, val_dice))
@@ -274,11 +271,11 @@ class SemanticSeg(object):
             loss = loss.float()
 
             # measure acc
-            acc = accuracy(cls_output.data, label)
+            acc = accuracy(cls_output.detach(), label)
             train_acc.update(acc.item(), data.size(0))
 
             # measure dice and record loss
-            dice = compute_dice(seg_output.data, target, ignore_index=0)
+            dice = compute_dice(seg_output.detach(), target, ignore_index=0)
             # dice = compute_iou(seg_output.data, target, ignore_index=0)
             train_loss.update(loss.item(), data.size(0))
             train_dice.update(dice.item(), data.size(0))
@@ -353,11 +350,11 @@ class SemanticSeg(object):
                 loss = loss.float()
 
                 # measure acc
-                acc = accuracy(cls_output.data, label)
+                acc = accuracy(cls_output.detach(), label)
                 val_acc.update(acc.item(),data.size(0))
 
                 # measure dice and record loss
-                dice = compute_dice(seg_output.data, target, ignore_index=0)
+                dice = compute_dice(seg_output.detach(), target, ignore_index=0)
                 # dice = compute_iou(seg_output.data, target, ignore_index=0)
                 val_loss.update(loss.item(), data.size(0))
                 val_dice.update(dice.item(), data.size(0))
@@ -430,12 +427,12 @@ class SemanticSeg(object):
                 seg_output = output[1].float()
 
                 # measure acc
-                acc = accuracy(cls_output.data, label)
+                acc = accuracy(cls_output.detach(), label)
                 test_acc.update(acc.item(),data.size(0))
 
                 # measure dice and iou for evaluation (float)
-                dice = compute_dice(seg_output.data, target, ignore_index=0)
-                iou = compute_iou(seg_output.data, target, ignore_index=0)
+                dice = compute_dice(seg_output.detach(), target, ignore_index=0)
+                iou = compute_iou(seg_output.detach(), target, ignore_index=0)
                 test_iou.update(iou.item(), data.size(0))
                 test_dice.update(dice.item(), data.size(0))
                 
@@ -513,14 +510,14 @@ class SemanticSeg(object):
 
     def _get_net(self, net_name):
         if net_name == 'c_unet':
-            from model.unet import unet
-            net = unet(n_channels=self.channels, n_classes=self.num_classes)
+            from model.unet import simple_unet
+            net = simple_unet(n_channels=self.channels, n_classes=self.num_classes)
         elif net_name == 'r_unet':
             from model.unet import unet
             net = unet(n_channels=self.channels, n_classes=self.num_classes, revise=True)
         elif net_name == 'e_unet':
-            from model.unet import unet
-            net = unet(n_channels=self.channels, n_classes=self.num_classes, cls_location='end')
+            from model.unet import simple_unet
+            net = simple_unet(n_channels=self.channels, n_classes=self.num_classes, cls_location='end')
         return net
 
     def _get_loss(self, loss_fun, class_weight=None):
@@ -533,7 +530,7 @@ class SemanticSeg(object):
         
         elif loss_fun == 'TopKLoss':
             from loss.cross_entropy import TopKLoss
-            loss = TopKLoss(weight=class_weight, ignore_index=0, k=20)
+            loss = TopKLoss(weight=class_weight, ignore_index=0, k=50)
         
         elif loss_fun == 'DiceLoss':
             from loss.dice_loss import DiceLoss
@@ -562,9 +559,17 @@ class SemanticSeg(object):
             from loss.combine_loss import CEPlusDice
             loss = CEPlusDice(weight=class_weight, ignore_index=0)
         
-        elif loss_fun == 'TopKCEPlusDice':
-            from loss.combine_loss import TopKCEPlusDice
-            loss = TopKCEPlusDice(weight=class_weight, ignore_index=0, k=10)
+        elif loss_fun == 'CEPlusTopkDice':
+            from loss.combine_loss import CEPlusTopkDice
+            loss = CEPlusTopkDice(weight=class_weight, ignore_index=0, reduction='topk', k=50)
+        
+        elif loss_fun == 'TopkCEPlusTopkDice':
+            from loss.combine_loss import TopkCEPlusTopkDice
+            loss = TopkCEPlusTopkDice(weight=class_weight, ignore_index=0, reduction='topk', k=50)
+        
+        elif loss_fun == 'TopkCEPlusDice':
+            from loss.combine_loss import TopkCEPlusDice
+            loss = TopkCEPlusDice(weight=class_weight, ignore_index=0, k=50)
         return loss
 
     def _get_optimizer(self, optimizer, net, lr):

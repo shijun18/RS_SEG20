@@ -16,17 +16,19 @@ class BinaryDiceLoss(nn.Module):
     Raise:
         Exception if unexpected reduction
     """
-    def __init__(self, smooth=1e-5, p=1, reduction='mean'):
+    def __init__(self, smooth=1e-5, p=1, reduction='mean', k=80):
         super(BinaryDiceLoss, self).__init__()
         self.smooth = smooth
         self.p = p
         self.reduction = reduction
+        self.k = k
 
     def forward(self, predict, target):
         """
         If weight is not None, shape=[N]
         """
         assert predict.shape[0] == target.shape[0], "predict & target batch size don't match"
+        batch_size = predict.shape[0]
         predict = predict.contiguous().view(predict.shape[0], -1)
         target = target.contiguous().view(target.shape[0], -1)
 
@@ -39,6 +41,9 @@ class BinaryDiceLoss(nn.Module):
             return loss.mean()
         elif self.reduction == 'sum':
             return loss.sum()
+        elif self.reduction == 'topk':
+            loss,_ = torch.topk(loss,int(batch_size * self.k / 100), sorted=False)
+            return loss.mean()
         elif self.reduction == 'none':
             return loss
         else:

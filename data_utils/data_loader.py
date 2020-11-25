@@ -83,8 +83,8 @@ class DataGenerator(Dataset):
         else:
             image = Image.open(self.img_list[index])
         mask = Image.open(self.lab_list[index])
-        print(self.img_list[index])
-        print(self.lab_list[index])
+        # print(self.img_list[index])
+        # print(self.lab_list[index])
         if self.crop_and_resize:
             image, mask = self._crop_and_resize(image,mask)
         assert os.path.splitext(os.path.basename(self.img_list[index]))[0] == os.path.splitext(os.path.basename(self.lab_list[index]))[0]

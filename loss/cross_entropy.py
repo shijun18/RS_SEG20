@@ -31,7 +31,7 @@ class CrossentropyLoss(torch.nn.CrossEntropyLoss):
 
 class TopKLoss(CrossentropyLoss):
 
-    def __init__(self, weight=None, ignore_index=-100, k=10):
+    def __init__(self, weight=None, ignore_index=-100, k=10, reduction=None):
         self.k = k
         super(TopKLoss, self).__init__(weight, False, ignore_index, reduce=False)
 
