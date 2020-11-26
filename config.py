@@ -5,7 +5,7 @@ from utils import get_path_with_annotation
 from utils import get_weight_path
 
 
-__net__ = ['c_unet','r_unet']
+__net__ = ['c_unet','r_unet','e_unet']
 __plan__ = ['all','single','seg_single']
 __mode__ = ['cls','seg','mtl']
 
@@ -14,19 +14,19 @@ ROI_LIST = ['A','B','C','D','E','F','G']
     
 
 PLAN = 'all'
-NET_NAME = 'c_unet'
-VERSION = 'v1.8'
+NET_NAME = 'e_unet'
+VERSION = 'v3.1'
 
 # for the all and single plan, mode can be one of ['cls','seg','mtl'], 
 # but when plan == seg_single, the mode must be 'seg'
 MODE = 'seg'
 
 
-DEVICE = '0,1,4,6'
+DEVICE = '1'
 # Must be True when pre-training and inference
 PRE_TRAINED = False 
 # 1,2,...,8
-CURRENT_FOLD = 1
+CURRENT_FOLD = 9
 GPU_NUM = len(DEVICE.split(','))
 FOLD_NUM = 9
 
@@ -57,7 +57,7 @@ else:
 
 #--------------------------------- others
 INPUT_SHAPE = (256,256)
-BATCH_SIZE = 32*4
+BATCH_SIZE = 32
 
 CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,MODE,VERSION,ROI_NAME,str(CURRENT_FOLD))
 # CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,'mtl','v1.0',ROI_NAME,str(CURRENT_FOLD))
@@ -66,7 +66,7 @@ print(WEIGHT_PATH)
 
 INIT_TRAINER = {
   'net_name':NET_NAME,
-  'lr':4e-3, 
+  'lr':1e-1, 
   'n_epoch':80,
   'channels':3,
   'num_classes':NUM_CLASSES, 
@@ -78,7 +78,7 @@ INIT_TRAINER = {
   'pre_trained':PRE_TRAINED,
   'weight_path':WEIGHT_PATH,
   'weight_decay': 0.001,
-  'momentum': 0.9,
+  'momentum': 0.99,
   'gamma': 0.1,
   'milestones': [40,80],
   'T_max':5,
@@ -86,7 +86,7 @@ INIT_TRAINER = {
  }
 #---------------------------------
 
-__seg_loss__ = ['DiceLoss','mIoU_loss','PowDiceLoss','Cross_Entropy']
+__seg_loss__ = ['DiceLoss','mIoU_loss','PowDiceLoss','Cross_Entropy','TopkDiceLoss','TopKLoss','CEPlusDice','TopkCEPlusDice','CEPlusTopkDice','TopkCEPlusTopkDice']
 __cls_loss__ = ['BCEWithLogitsLoss']
 __mtl_loss__ = ['BCEPlusDice']
 # Arguments when perform the trainer 
@@ -94,16 +94,16 @@ __mtl_loss__ = ['BCEPlusDice']
 if MODE == 'cls':
     LOSS_FUN = 'BCEWithLogitsLoss'
 elif MODE == 'seg' :
-    LOSS_FUN = 'DiceLoss'
+    LOSS_FUN = 'TopkDiceLoss'
 else:
     LOSS_FUN = 'BCEPlusDice'
 
 SETUP_TRAINER = {
   'output_dir':'./ckpt/{}/{}/{}/{}'.format(PLAN,MODE,VERSION,ROI_NAME),
   'log_dir':'./log/{}/{}/{}/{}'.format(PLAN,MODE,VERSION,ROI_NAME), 
-  'optimizer':'Adam',
+  'optimizer':'SGD',
   'loss_fun':LOSS_FUN,
   'class_weight':None, #[2,1,1,1,4,4,3,1]
-  'lr_scheduler': 'CosineAnnealingLR', #'CosineAnnealingLR'
+  'lr_scheduler':'CosineAnnealingLR', #'CosineAnnealingLR'
   }
 #---------------------------------
