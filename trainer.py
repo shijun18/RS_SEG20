@@ -172,9 +172,9 @@ class SemanticSeg(object):
 
         # optimizer setting
         optimizer = self._get_optimizer(optimizer, net, lr)
-        if self.pre_trained:
-            checkpoint = torch.load(self.weight_path)
-            optimizer.load_state_dict(checkpoint['optimizer'])
+        # if self.pre_trained:
+        #     checkpoint = torch.load(self.weight_path)
+        #     optimizer.load_state_dict(checkpoint['optimizer'])
 
         if lr_scheduler is not None:
             lr_scheduler = self._get_lr_scheduler(lr_scheduler, optimizer)
@@ -241,6 +241,9 @@ class SemanticSeg(object):
         train_dice = AverageMeter()
         train_acc = AverageMeter()
 
+        from metrics import RunningConfusionMatrix
+        cm = RunningConfusionMatrix(labels=list(range(1,8)),ignore_label=0)
+
         for step, sample in enumerate(train_loader):
 
             data = sample['image']
@@ -268,6 +271,8 @@ class SemanticSeg(object):
             cls_output = F.sigmoid(cls_output).float()
 
             seg_output = output[1].float() #N*C*H*W
+            seg_output = F.softmax(seg_output, dim=1)
+
             loss = loss.float()
 
             # measure acc
@@ -276,21 +281,29 @@ class SemanticSeg(object):
 
             # measure dice and record loss
             dice = compute_dice(seg_output.detach(), target, ignore_index=0)
-            # dice = compute_iou(seg_output.data, target, ignore_index=0)
             train_loss.update(loss.item(), data.size(0))
             train_dice.update(dice.item(), data.size(0))
 
+            # measure confusion matrix   
+            seg_output = torch.argmax(seg_output,1).detach().cpu().numpy()  #N*H*W 
+            target = torch.argmax(target,1).detach().cpu().numpy()
+            cm.update_matrix(target,seg_output)
+
             torch.cuda.empty_cache()
 
-            if self.mode == 'cls':
-                print('epoch:{},step:{},train_loss:{:.5f},train_acc:{:.5f},lr:{}'.format(epoch, step, loss.item(), acc.item(), optimizer.param_groups[0]['lr']))
-
-            elif self.mode == 'seg':
-                print('epoch:{},step:{},train_loss:{:.5f},train_dice:{:.5f},lr:{}'.format(epoch, step, loss.item(), dice.item(), optimizer.param_groups[0]['lr']))
-            else:
-                print('epoch:{},step:{},train_loss:{:.5f},train_dice:{:.5f},train_acc:{:.5f},lr:{}'.format(epoch, step, loss.item(), dice.item(),acc.item(), optimizer.param_groups[0]['lr']))
-
             if self.global_step % 10 == 0:
+                if self.mode == 'cls':
+                    print('epoch:{},step:{},train_loss:{:.5f},train_acc:{:.5f},lr:{}'.format(epoch, step, loss.item(), acc.item(), optimizer.param_groups[0]['lr']))
+
+                elif self.mode == 'seg':
+                    iou, iou_list = cm.compute_mIoU() 
+                    print("Category IoU: ", iou_list)
+                    print('epoch:{},step:{},train_loss:{:.5f},train_dice:{:.5f},train_iou:{:.5f},lr:{}'.format(epoch, step, loss.item(), dice.item(),iou,optimizer.param_groups[0]['lr']))
+                    cm.init_op()
+                else:
+                    print('epoch:{},step:{},train_loss:{:.5f},train_dice:{:.5f},train_acc:{:.5f},lr:{}'.format(epoch, step, loss.item(), dice.item(),acc.item(), optimizer.param_groups[0]['lr']))
+
+                
                 self.writer.add_scalars('data/train_loss_dice', {
                     'train_loss': loss.item(),
                     'train_dice': dice.item(),
@@ -324,6 +337,9 @@ class SemanticSeg(object):
         val_dice = AverageMeter()
         val_acc = AverageMeter()
 
+        from metrics import RunningConfusionMatrix
+        cm = RunningConfusionMatrix(labels=list(range(1,8)),ignore_label=0)
+
         with torch.no_grad():
             for step, sample in enumerate(val_loader):
                 data = sample['image']
@@ -347,6 +363,8 @@ class SemanticSeg(object):
                 cls_output = F.sigmoid(cls_output).float()
 
                 seg_output = output[1].float()
+                seg_output = F.softmax(seg_output, dim=1)
+
                 loss = loss.float()
 
                 # measure acc
@@ -355,18 +373,26 @@ class SemanticSeg(object):
 
                 # measure dice and record loss
                 dice = compute_dice(seg_output.detach(), target, ignore_index=0)
-                # dice = compute_iou(seg_output.data, target, ignore_index=0)
                 val_loss.update(loss.item(), data.size(0))
                 val_dice.update(dice.item(), data.size(0))
 
+                # measure confusion matrix
+                seg_output = torch.argmax(seg_output,1).detach().cpu().numpy()  #N*H*W 
+                target = torch.argmax(target,1).detach().cpu().numpy()
+                cm.update_matrix(target,seg_output)
+
                 torch.cuda.empty_cache()
 
-                if self.mode == 'cls':
-                    print('epoch:{},step:{},val_loss:{:.5f},val_acc:{:.5f}'.format(epoch, step, loss.item(), acc.item()))
-                elif self.mode == 'seg':
-                    print('epoch:{},step:{},val_loss:{:.5f},val_dice:{:.5f}'.format(epoch, step, loss.item(), dice.item()))
-                else:
-                    print('epoch:{},step:{},val_loss:{:.5f},val_dice:{:.5f},val_acc:{:.5f}'.format(epoch, step, loss.item(), dice.item(), acc.item()))
+                if step % 10 == 0:
+                    if self.mode == 'cls':
+                        print('epoch:{},step:{},val_loss:{:.5f},val_acc:{:.5f}'.format(epoch, step, loss.item(), acc.item()))
+                    elif self.mode == 'seg':
+                        iou, iou_list = cm.compute_mIoU()
+                        print("Category IoU", iou_list)
+                        print('epoch:{},step:{},val_loss:{:.5f},val_dice:{:.5f},val_iou:{:.5f}'.format(epoch, step, loss.item(), dice.item(),iou))
+                        cm.init_op()
+                    else:
+                        print('epoch:{},step:{},val_loss:{:.5f},val_dice:{:.5f},val_acc:{:.5f}'.format(epoch, step, loss.item(), dice.item(), acc.item()))
 
         return val_loss.avg, val_dice.avg, val_acc.avg
 
@@ -402,7 +428,6 @@ class SemanticSeg(object):
                                 num_workers=self.num_workers,
                                 pin_memory=True)
 
-        test_iou = AverageMeter()
         test_dice = AverageMeter()
         test_acc = AverageMeter()
         from metrics import RunningConfusionMatrix
@@ -425,6 +450,7 @@ class SemanticSeg(object):
                 cls_output = F.sigmoid(cls_output).float()
 
                 seg_output = output[1].float()
+                seg_output = F.softmax(seg_output, dim=1)
 
                 # measure acc
                 acc = accuracy(cls_output.detach(), label)
@@ -432,32 +458,29 @@ class SemanticSeg(object):
 
                 # measure dice and iou for evaluation (float)
                 dice = compute_dice(seg_output.detach(), target, ignore_index=0)
-                iou = compute_iou(seg_output.detach(), target, ignore_index=0)
-                test_iou.update(iou.item(), data.size(0))
                 test_dice.update(dice.item(), data.size(0))
                 
-                # mIoU (int)
-                seg_output = F.softmax(seg_output, dim=1)
                 cls_output = (cls_output > 0.5).float() # N*C
                 print(cls_output.detach())
                 if mode == 'mtl':
                     b, c, _, _ = seg_output.size()
                     seg_output = seg_output * cls_output.view(b,c,1,1).expand_as(seg_output)
 
+                # mIoU
                 seg_output = torch.argmax(seg_output,1).detach().cpu().numpy()  #N*H*W N=1
                 target = torch.argmax(target,1).detach().cpu().numpy()
-
+                cm.update_matrix(target,seg_output)
                 print(np.unique(seg_output),np.unique(target))
-                
-                cm.update_matrix(target.flatten(),seg_output.flatten())
-                
 
                 torch.cuda.empty_cache()
                 
-                print('step:{},test_iou:{:.5f},test_dice:{:.5f},test_acc:{:.5f}'.format(step,iou.item(), dice.item(),acc.item()))
             
-            miou = cm.compute_current_mean_intersection_over_union()
-            print('miou:{:.5f},avg_iou:{:.5f},avg_dice:{:.5f},avg_acc:{:.5f}'.format(miou,test_iou.avg, test_dice.avg, test_acc.avg))
+                iou, iou_list = cm.compute_mIoU()
+                print("Category IoU: ", iou_list)
+                print('step:{},test_iou:{:.5f},test_dice:{:.5f},test_acc:{:.5f}'.format(step,iou,dice.item(),acc.item()))
+            
+
+        print('avg_dice:{:.5f},avg_acc:{:.5f}'.format(test_dice.avg, test_acc.avg))
 
     def inference(self, test_path, save_path, net=None, palette=None):
 
@@ -686,8 +709,6 @@ def compute_dice(predict, target, ignore_index=0):
     """
     assert predict.shape == target.shape, 'predict & target shape do not match'
     total_dice = 0.
-    predict = F.softmax(predict, dim=1)
-    # predict = F.sigmoid(predict)
     dice_list = []
     for i in range(target.shape[1]):
         if i != ignore_index:
@@ -715,11 +736,13 @@ def compute_iou(predict, target, ignore_index=0):
     """
     assert predict.shape == target.shape, 'predict & target shape do not match'
     total_iou = 0.
-    predict = F.softmax(predict, dim=1)
+    iou_list = []
     for i in range(target.shape[1]):
         if i != ignore_index:
             iou = binary_iou(predict[:, i], target[:, i])
             total_iou += iou
+            iou_list.append(round(iou.item(),4))
+    print(iou_list)
 
     if ignore_index is not None:
         return total_iou / (target.shape[1] - 1)

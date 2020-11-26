@@ -46,6 +46,10 @@ class RunningConfusionMatrix():
             
             return
         
+        if len(ground_truth.shape) > 1 or len(prediction.shape) > 1:
+            ground_truth = ground_truth.flatten()
+            prediction = prediction.flatten()
+        
         current_confusion_matrix = confusion_matrix(y_true=ground_truth,
                                                     y_pred=prediction,
                                                     labels=self.labels)
@@ -54,7 +58,7 @@ class RunningConfusionMatrix():
         else:
             self.overall_confusion_matrix = current_confusion_matrix
     
-    def compute_current_mean_intersection_over_union(self,smooth=1e-5):
+    def compute_mIoU(self,smooth=1e-5):
         
         intersection = np.diag(self.overall_confusion_matrix)
         ground_truth_set = self.overall_confusion_matrix.sum(axis=1)
@@ -62,9 +66,14 @@ class RunningConfusionMatrix():
         union =  ground_truth_set + predicted_set - intersection
 
         intersection_over_union = (intersection + smooth ) / (union.astype(np.float32) + smooth)
+        iou_list = [round(case,4) for case in intersection_over_union]
         mean_intersection_over_union = np.mean(intersection_over_union)
         
-        return mean_intersection_over_union
+        return mean_intersection_over_union, iou_list
+    
+    def init_op(self):
+        self.overall_confusion_matrix = None
+
 
 
 

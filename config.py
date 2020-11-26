@@ -15,7 +15,7 @@ ROI_LIST = ['A','B','C','D','E','F','G']
 
 PLAN = 'all'
 NET_NAME = 'e_unet'
-VERSION = 'v3.1'
+VERSION = 'v3.3'
 
 # for the all and single plan, mode can be one of ['cls','seg','mtl'], 
 # but when plan == seg_single, the mode must be 'seg'
@@ -24,9 +24,9 @@ MODE = 'seg'
 
 DEVICE = '1'
 # Must be True when pre-training and inference
-PRE_TRAINED = False 
+PRE_TRAINED = True 
 # 1,2,...,8
-CURRENT_FOLD = 9
+CURRENT_FOLD = 1
 GPU_NUM = len(DEVICE.split(','))
 FOLD_NUM = 9
 
@@ -59,8 +59,8 @@ else:
 INPUT_SHAPE = (256,256)
 BATCH_SIZE = 32
 
-CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,MODE,VERSION,ROI_NAME,str(CURRENT_FOLD))
-# CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,'mtl','v1.0',ROI_NAME,str(CURRENT_FOLD))
+# CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,MODE,VERSION,ROI_NAME,str(CURRENT_FOLD))
+CKPT_PATH = '/staff/shijun/torch_projects/RSI_SEG20/ckpt/{}/{}/{}/{}/fold{}'.format(PLAN,'cls','v3.0',ROI_NAME,str(CURRENT_FOLD))
 WEIGHT_PATH = get_weight_path(CKPT_PATH)
 print(WEIGHT_PATH)
 
@@ -94,7 +94,7 @@ __mtl_loss__ = ['BCEPlusDice']
 if MODE == 'cls':
     LOSS_FUN = 'BCEWithLogitsLoss'
 elif MODE == 'seg' :
-    LOSS_FUN = 'TopkDiceLoss'
+    LOSS_FUN = 'Cross_Entropy'
 else:
     LOSS_FUN = 'BCEPlusDice'
 
