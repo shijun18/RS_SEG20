@@ -63,7 +63,7 @@ class CEPlusDice(nn.Module):
         dice = DiceLoss(weight=self.weight,ignore_index=self.ignore_index,**self.kwargs)
         dice_loss = dice(predict,target)
 
-        ce = CrossentropyLoss(weight=self.weight,ignore_index=self.ignore_index)
+        ce = CrossentropyLoss(weight=self.weight)
         ce_loss = ce(predict,target)
         
         total_loss = ce_loss + dice_loss
@@ -96,7 +96,7 @@ class CEPlusTopkDice(nn.Module):
         dice = DiceLoss(weight=self.weight,ignore_index=self.ignore_index,**self.kwargs)
         dice_loss = dice(predict,target)
 
-        ce = CrossentropyLoss(weight=self.weight,ignore_index=self.ignore_index)
+        ce = CrossentropyLoss(weight=self.weight)
         ce_loss = ce(predict,target)
         
         total_loss = ce_loss + dice_loss
@@ -126,7 +126,7 @@ class TopkCEPlusDice(nn.Module):
         dice = DiceLoss(weight=self.weight,ignore_index=self.ignore_index,**self.kwargs)
         dice_loss = dice(predict,target)
 
-        topk = TopKLoss(weight=self.weight,ignore_index=self.ignore_index,**self.kwargs)
+        topk = TopKLoss(weight=self.weight,**self.kwargs)
         topk_loss = topk(predict,target)
         
         total_loss = topk_loss + dice_loss
@@ -157,7 +157,7 @@ class TopkCEPlusTopkDice(nn.Module):
         dice = DiceLoss(weight=self.weight,ignore_index=self.ignore_index,**self.kwargs)
         dice_loss = dice(predict,target)
 
-        topk = TopKLoss(weight=self.weight,ignore_index=self.ignore_index,k=50)
+        topk = TopKLoss(weight=self.weight,k=50)
         topk_loss = topk(predict,target)
         
         total_loss = topk_loss + dice_loss

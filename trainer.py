@@ -54,7 +54,8 @@ class SemanticSeg(object):
                  gamma=0.1,
                  milestones=[40, 80],
                  T_max=5,
-                 mode='cls'):
+                 mode='cls',
+                 topk=10):
         super(SemanticSeg, self).__init__()
 
         self.net_name = net_name
@@ -82,6 +83,7 @@ class SemanticSeg(object):
         self.T_max = T_max
 
         self.mode = mode
+        self.topk = topk
 
         os.environ['CUDA_VISIBLE_DEVICES'] = self.device
 
@@ -549,11 +551,11 @@ class SemanticSeg(object):
 
         if loss_fun == 'Cross_Entropy':
             from loss.cross_entropy import CrossentropyLoss
-            loss = CrossentropyLoss(weight=class_weight, ignore_index=0)
+            loss = CrossentropyLoss(weight=class_weight)
         
         elif loss_fun == 'TopKLoss':
             from loss.cross_entropy import TopKLoss
-            loss = TopKLoss(weight=class_weight, ignore_index=0, k=50)
+            loss = TopKLoss(weight=class_weight, k=self.topk)
         
         elif loss_fun == 'DiceLoss':
             from loss.dice_loss import DiceLoss
@@ -561,7 +563,7 @@ class SemanticSeg(object):
         
         elif loss_fun == 'TopkDiceLoss':
             from loss.dice_loss import DiceLoss
-            loss = DiceLoss(weight=class_weight, ignore_index=0,reduction='topk', k=50)
+            loss = DiceLoss(weight=class_weight, ignore_index=0,reduction='topk', k=self.topk)
         
         elif loss_fun == 'mIoU_loss':
             from loss.mIoU_loss import mIoU_loss
@@ -584,15 +586,15 @@ class SemanticSeg(object):
         
         elif loss_fun == 'CEPlusTopkDice':
             from loss.combine_loss import CEPlusTopkDice
-            loss = CEPlusTopkDice(weight=class_weight, ignore_index=0, reduction='topk', k=50)
+            loss = CEPlusTopkDice(weight=class_weight, ignore_index=0, reduction='topk', k=self.topk)
         
         elif loss_fun == 'TopkCEPlusTopkDice':
             from loss.combine_loss import TopkCEPlusTopkDice
-            loss = TopkCEPlusTopkDice(weight=class_weight, ignore_index=0, reduction='topk', k=50)
+            loss = TopkCEPlusTopkDice(weight=class_weight, ignore_index=0, reduction='topk', k=self.topk)
         
         elif loss_fun == 'TopkCEPlusDice':
             from loss.combine_loss import TopkCEPlusDice
-            loss = TopkCEPlusDice(weight=class_weight, ignore_index=0, k=50)
+            loss = TopkCEPlusDice(weight=class_weight, ignore_index=0, k=self.topk)
         return loss
 
     def _get_optimizer(self, optimizer, net, lr):
