@@ -72,7 +72,7 @@ class DiceLoss(nn.Module):
         dice = BinaryDiceLoss(**self.kwargs)
         total_loss = 0
         predict = F.softmax(predict, dim=1)
-        # predict = F.sigmoid(predict)
+        
         for i in range(target.shape[1]):
             if i != self.ignore_index:
                 dice_loss = dice(predict[:, i], target[:, i])
