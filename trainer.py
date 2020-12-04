@@ -74,7 +74,7 @@ class SemanticSeg(object):
 
         self.start_epoch = 0
         self.global_step = 0
-        self.loss_threshold = 1.0
+        self.loss_threshold = 2.0
 
         self.weight_decay = weight_decay
         self.momentum = momentum
